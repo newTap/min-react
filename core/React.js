@@ -1,4 +1,5 @@
-function createdElement(type, props, ...children){
+function createElement(type, props, ...children){
+  console.log(type, props, ...children)
   let dom = document.createElement(type);
   for (let key in props){
     dom.setAttribute(key, props[key])
@@ -20,7 +21,7 @@ function render(node, container){
 
 const React = {
   render,
-  createdElement
+  createElement
 }
 
 export default React

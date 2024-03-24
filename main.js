@@ -1,6 +1,4 @@
-import React from './core/react.js'
 import ReactDom from './core/ReactDom.js'
+import App from './App.jsx'
 
-const app = React.createdElement('div', {id:'name'}, 'hello world')
-
-ReactDom.createdRoot("#root").render(app)
+ReactDom.createdRoot("#app").render(App)
