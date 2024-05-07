@@ -9,6 +9,20 @@ import React from './core/React.js'
 //   return /* @__PURE__ */ React.createElement("div", null, "hello word");
 // }
 
-const App = <div id="hello">hello word</div>
+// const App = (
+//   <div id="hello">
+//     <span>hello</span>
+//     <span>word</span>
+//   </div>
+// )
 
+const  App = () => (
+  <div id="hello">
+    <span>hello</span>
+    <span style={{marginLeft: '10px'}}>word</span>
+  </div>
+)
+
+// const App = <div>123</div>
+console.log('App', App)
 export default App
