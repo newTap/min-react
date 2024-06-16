@@ -10,6 +10,33 @@
 <body>
   <div id="app"></div>
   <script type="module" src="main.js"></script>
+  <script>
+
+    const max = 1000000
+    const maxTime = 5
+    var num = 0
+    var sept = 0
+    function task(data) {
+      let flags = false
+      sept += 1
+      while (!flags) {
+        let timeRemaining = data.timeRemaining()
+        flags = timeRemaining < maxTime
+        if (num < max) {
+          num += 1
+        }
+        if (num === max) {
+          console.log(`${max}次加法运算完成共用了:`, sept)
+        }
+      }
+      if (num < max) {
+        console.log(`第:${sept}次运算。结果：${num}`)
+        requestIdleCallback(task);
+      }
+    }
+
+    // requestIdleCallback(task); //
+  </script>
 </body>
 
 </html>
