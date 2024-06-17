@@ -60,7 +60,7 @@ function workLoop(deadline) {
 // 当根组建全部更新好之后，再渲染至页面上,防止一次性渲染不全的问题
 function commitRoot(fiber){
   if(!root) return false;
-  
+
   let parentFiber = fiber?.parent
   let parentFiberDom = fiber?.parent?.dom
 
@@ -81,23 +81,48 @@ function commitRoot(fiber){
   }
 }
 
+function functionComponent(fiber){
+  // 当遇到函数组建时，需要将其转化为虚拟dom
+  fiber.children = [fiber.type(fiber.props)]
+}
+
+function hookComponent(fiber){
+  let {dom} = fiber
+  // 首次初始化的时候,会默认自带dom,但是后续的fiber是需要创建的
+  if(!dom) {
+  // 创建对应fiber dom的同时将其添加至fiber中
+    dom = fiber.dom = performCreatedDom(fiber.type, fiber.props, fiber.children)
+  }
+}
+
 // 处理vnode转化为fiber
 // 创建filer间的引用
 // 根据fiber对象来渲染dom
 // 返回下一个fiber对象
-function performWorkOfUnit(worker){
-  let {dom, children} = worker
-  const isFunctionComponent  = isFunction(worker.type)
-  // 首次初始化的时候,会默认自带dom,但是后续的fiber是需要创建的
-  if(!dom && !isFunctionComponent) {
-    // 创建对应fiber dom的同时将其添加至fiber中
-      dom = worker.dom = performCreatedDom(worker.type, worker.props, worker.children)
-      // worker.parent.dom.appendChild(dom)
+function performWorkOfUnit(fiber){
+  const isFunctionComponent  = isFunction(fiber.type)
+
+  if(isFunctionComponent){
+    functionComponent(fiber)
+  }else{
+    hookComponent(fiber)
   }
-  // 当遇到函数组建时，需要将其转化为虚拟dom
-  if( isFunctionComponent ){
-    children = worker.children = [worker.type(worker.props)]
+
+  initFiberInfo(fiber, fiber.children)
+
+  // 根据fiber返回的顺序,优先返回child,然后是sibling最后是parent的sibling
+  if(fiber.child)return fiber.child
+  if(fiber.sibling)return fiber.sibling
+  // 当在组建嵌套时,单独寻找上一层的父元素的sibling,可能会遇空,所以需要一直往上一级寻找
+  let parent = fiber?.parent
+  while(parent&&!parent?.sibling){
+   parent = parent?.parent
   }
+  return parent?.sibling
+}
+
+function initFiberInfo(worker, children){
+  // 记录上一个子fiber节点
   let prevFiber
   // 生成fiber数据结构
   children?.forEach((item, index) => {
@@ -114,16 +139,6 @@ function performWorkOfUnit(worker){
     }
     prevFiber = fiber
   })
-
-  // 根据fiber返回的顺序,优先返回child,然后是sibling最后是parent的sibling
-  if(worker.child)return worker.child
-  if(worker.sibling)return worker.sibling
-  // 当在组建嵌套时,单独寻找上一层的父元素的sibling,可能会遇空,所以需要一直往上一级寻找
-  let parent = worker?.parent
-  while(parent&&!parent?.sibling){
-   parent = parent?.parent
-  }
-  return parent?.sibling
 }
 
 function performCreatedDom(type, props){
