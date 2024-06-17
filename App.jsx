@@ -16,10 +16,27 @@ import React from './core/React.js'
 //   </div>
 // )
 
+const List = () => (
+  <div>
+    <li>1</li>
+    <li>2</li>
+    <li>3</li>
+  </div>
+)
+
+const Hello = ({num}) => (
+  <div>
+    <div>hello:{num}</div>
+    <List/>
+  </div>
+)
 
 const  App = () => (
   <div id="hello">
-    <span>hello</span>
+    {/* <div>hello</div> */}
+    <Hello num={20}/>
+    <Hello num={300}/>
+    <Hello num={600}/>
     <span style={{marginLeft: '10px'}}>word</span>
   </div>
 )

@@ -1,5 +1,5 @@
-import { forEach } from "lodash";
 import { styleOperate } from "./DomOperate";
+import { isFunction } from "../util";
 
 const TEXT_NODE_TYPE = 'TEXT_ELEMENT'
 
@@ -18,7 +18,7 @@ function createVnode(type, props, ...children){
   return{
     type,
     props,
-    children: children.map(child => typeof child === 'string' ? createTextNode(child) : child)
+    children: children.map(child => typeof child === 'object' ? child : createTextNode(child))
   }
 }
 
@@ -35,19 +35,50 @@ function render(node, container){
     dom:container,
     children: [vnode]
   }
+  root = nextWorkOfUnit
 }
 
 let nextWorkOfUnit = null;
+// 用于记录根组建,当根组建全部更新好之后,再渲染至页面上
+let root = null
 function workLoop(deadline) {
   let shouldYield = false;
   //  有需要执行fiber并且时间充裕
   while (!shouldYield && nextWorkOfUnit) {
     nextWorkOfUnit = performWorkOfUnit(nextWorkOfUnit);
-
+    // 首次渲染将完成之后将root清空
+    if(!nextWorkOfUnit && root){
+      commitRoot(root.child);
+      root = null;
+    }
     shouldYield = deadline.timeRemaining() < 5;
   }
 
   requestIdleCallback(workLoop);
+}
+
+// 当根组建全部更新好之后，再渲染至页面上,防止一次性渲染不全的问题
+function commitRoot(fiber){
+  if(!root) return false;
+  
+  let parentFiber = fiber?.parent
+  let parentFiberDom = fiber?.parent?.dom
+
+  // 当组建嵌套之后,会遇到parent的dom为空的情况,需要不断往上级查找直到能找到真实dom
+  while(!parentFiberDom){
+    parentFiber = parentFiber?.parent
+    parentFiberDom = parentFiber?.dom
+  }
+  if(fiber?.dom){
+    parentFiberDom.appendChild(fiber?.dom)
+  }
+
+  if(fiber?.child){
+    commitRoot(fiber.child)
+  }
+  if(fiber?.sibling){
+    commitRoot(fiber.sibling)
+  }
 }
 
 // 处理vnode转化为fiber
@@ -56,13 +87,17 @@ function workLoop(deadline) {
 // 返回下一个fiber对象
 function performWorkOfUnit(worker){
   let {dom, children} = worker
+  const isFunctionComponent  = isFunction(worker.type)
   // 首次初始化的时候,会默认自带dom,但是后续的fiber是需要创建的
-  if(!dom) {
+  if(!dom && !isFunctionComponent) {
     // 创建对应fiber dom的同时将其添加至fiber中
-      dom  = worker.dom = performCreatedDom(worker.type, worker.props, worker.children)
-      worker.parent.dom.appendChild(dom)
+      dom = worker.dom = performCreatedDom(worker.type, worker.props, worker.children)
+      // worker.parent.dom.appendChild(dom)
   }
-
+  // 当遇到函数组建时，需要将其转化为虚拟dom
+  if( isFunctionComponent ){
+    children = worker.children = [worker.type(worker.props)]
+  }
   let prevFiber
   // 生成fiber数据结构
   children?.forEach((item, index) => {
@@ -83,7 +118,12 @@ function performWorkOfUnit(worker){
   // 根据fiber返回的顺序,优先返回child,然后是sibling最后是parent的sibling
   if(worker.child)return worker.child
   if(worker.sibling)return worker.sibling
-  return worker?.parent?.sibling
+  // 当在组建嵌套时,单独寻找上一层的父元素的sibling,可能会遇空,所以需要一直往上一级寻找
+  let parent = worker?.parent
+  while(parent&&!parent?.sibling){
+   parent = parent?.parent
+  }
+  return parent?.sibling
 }
 
 function performCreatedDom(type, props){
