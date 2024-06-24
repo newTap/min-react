@@ -2,7 +2,7 @@ import React from './React.js'
 
 const ReactDom = {
   // 创建根组建
-  createdRoot(id) {
+  createRoot(id) {
     let container = typeof id === 'string' ?document.querySelector(id) : id
     return {
       render: (node) => {
