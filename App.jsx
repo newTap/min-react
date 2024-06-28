@@ -17,6 +17,8 @@ import React from './core/React.js'
 //   </div>
 // )
 
+let status = true;
+
 const List = ({id}) => {
   function click(){
     console.log('12313')
@@ -39,16 +41,19 @@ let props = {
   id:'hel'
 }
 
-const Hello = ({num}) => {
+const Hello = () => {
   console.log('重新执行了')
   function click(){
     console.log('123')
     props.id = '123'
+    status = !status;
     React.effect()
   }
   return (<div>
-    <div onClick={click}>hello:{num}</div>
-    <List id={props.id}/>
+    <div onClick={click}>hello</div>
+    {status ? 
+      <List id={props.id}/>
+    : <div>123</div>}
   </div>)
 }
 
@@ -57,7 +62,7 @@ const  App = () => {
   return (
   <div id="hello">
     {/* <div>hello</div> */}
-    <Hello num={number}/>
+    <Hello/>
     {/* <Hello num={300}/>
     <Hello num={600}/> */}
     <span style={{marginLeft: '10px'}}>word</span>

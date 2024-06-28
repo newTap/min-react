@@ -9,7 +9,8 @@ function createTextNode(node) {
   return {
     type: TEXT_NODE_TYPE,
     props: {
-      nodeValue: node
+      // 防止node为false的渲染
+      nodeValue: node === false ? '' : node
     },
     children: []
   }
@@ -39,6 +40,8 @@ function render(node, container) {
   root = nextWorkOfUnit
 }
 
+// 搜集需要删除的fiber
+let deletions = [];
 let nextWorkOfUnit = null;
 // 用于记录当前正在执行的根组件,当根组件全部更新好之后,再渲染至页面上
 let root = null
@@ -52,6 +55,12 @@ function workLoop(deadline) {
     // 首次渲染将完成之后将root清空
     if (!nextWorkOfUnit && root) {
       commitRoot(root.child);
+      while (deletions.length > 0) {
+        let fiber = deletions.shift()
+        commitDelete(fiber);
+      }
+
+
       currentFiber = root
       root = null;
     }
@@ -73,7 +82,7 @@ function commitRoot(fiber) {
     parentFiber = parentFiber?.parent
     parentFiberDom = parentFiber?.dom
   }
-  console.log('fiber', fiber)
+
   if (fiber?.effectTag === FIBER_UPDATE && fiber.dom) {
     // fiber更新
     // 将fiber的dom更新到真实dom上
@@ -94,6 +103,21 @@ function commitRoot(fiber) {
   }
 }
 
+function commitDelete(fiber) {
+  let fiberParent = fiber.parent;
+  let fiberDom = fiber
+  while (!fiberParent.dom) {
+    fiberParent = fiberParent.parent
+  }
+  while (!fiberDom.dom) {
+    fiberDom = fiberDom.child
+  }
+  // 校验,是否为子元素,即父元素可能已经被删除
+  if (fiberParent.dom.contains(fiberDom.dom)) {
+    fiberParent.dom.removeChild(fiberDom.dom)
+  }
+}
+
 function functionComponent(fiber) {
   // 当遇到函数组建时，需要将其转化为虚拟dom
   //! 当函数组建更新之后,重新运行函数组建,即可获得最新的状态
@@ -103,7 +127,7 @@ function functionComponent(fiber) {
 function hookComponent(fiber) {
   let { dom } = fiber
   // 首次初始化的时候,会默认自带dom,但是后续的fiber是需要创建的
-  if (!dom) {
+  if (!dom || fiber.effectTag === PLACEMENT_UPDATE) {
     // 创建对应fiber dom的同时将其添加至fiber中
     dom = fiber.dom = performCreatedDom(fiber.type, fiber.props, fiber.children)
   }
@@ -140,11 +164,23 @@ function reconcileChildren(worker, children) {
   let prevFiber
   // 生成fiber数据结构
   children?.forEach((item, index) => {
-    const { type, props } = item
-    const isSameType = oldFiber?.type === item.type
-    const fiber = createdFiberInfo({ type, dom: oldFiber?.dom, children: item.children, props, parent: worker, oldFiber, effectTag: +isSameType })
+    const type = item?.type;
+    const props = item?.props
+    const isSameType = oldFiber?.type === item?.type
+    let fiber
+
+    if (!(!isSameType && !item)) {
+      fiber = createdFiberInfo({ type, dom: isSameType ? oldFiber?.dom : item.dom, children: item.children, props, parent: worker, oldFiber, effectTag: +isSameType })
+    }
+    // 类型不一样,并且有旧fiber,需要将dom去除
+    if (!isSameType && oldFiber) {
+      deletions.push(oldFiber);
+    }
+
     // 将当前旧fiber更新到下一个旧的兄弟fiber
-    oldFiber = oldFiber?.sibling
+    if (oldFiber) {
+      oldFiber = oldFiber?.sibling
+    }
 
     if (index === 0) {
       // 默认第一个节点为子节点
@@ -155,6 +191,11 @@ function reconcileChildren(worker, children) {
     }
     prevFiber = fiber
   })
+  // 是否含有多余的旧兄弟fiber,并将其dom删除
+  while (oldFiber) {
+    deletions.push(oldFiber);
+    oldFiber = oldFiber.sibling;
+  }
 }
 
 function performCreatedDom(type, props) {
@@ -173,7 +214,7 @@ function performCreatedDom(type, props) {
 function updateAttribute(dom, newProps, oldProps) {
 
   if (dom.nodeType === 3) {
-    dom.nodeValue = newProps.nodeValue
+    dom.nodeValue = newProps.nodeValue || ''
     return
   }
 
@@ -207,7 +248,7 @@ function createdFiberInfo({ type, dom, props, children, child, sibling, parent, 
   return {
     type: type,
     props: props,
-    dom: dom || oldFiber?.dom,
+    dom: dom,
     child: child,
     sibling: sibling,
     // !此处children不能少,因为fiber需要vnode中的children来查找对应的关系链接
