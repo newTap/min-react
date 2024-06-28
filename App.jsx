@@ -20,10 +20,11 @@ import React from './core/React.js'
 let status = true;
 
 const List = ({id}) => {
+  const effect = React.effect()
   function click(){
     console.log('12313')
     number+=1;
-    React.effect()
+    effect()
     console.log('number', number)
   }
   console.log('2222222')
@@ -42,12 +43,12 @@ let props = {
 }
 
 const Hello = () => {
-  console.log('重新执行了')
+  const effect = React.effect()
   function click(){
     console.log('123')
     props.id = '123'
     status = !status;
-    React.effect()
+    effect()
   }
   return (<div>
     <div onClick={click}>hello</div>

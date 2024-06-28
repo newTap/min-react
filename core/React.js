@@ -46,6 +46,8 @@ let nextWorkOfUnit = null;
 // 用于记录当前正在执行的根组件,当根组件全部更新好之后,再渲染至页面上
 let root = null
 let currentFiber = null
+// 存储当前执行的函数组建
+let saveFunctionComponent = null
 
 function workLoop(deadline) {
   let shouldYield = false;
@@ -121,6 +123,8 @@ function commitDelete(fiber) {
 function functionComponent(fiber) {
   // 当遇到函数组建时，需要将其转化为虚拟dom
   //! 当函数组建更新之后,重新运行函数组建,即可获得最新的状态
+  // 当函数组建执行的时候,暂时将该组建的fiber存储
+  saveFunctionComponent = fiber
   fiber.children = [fiber.type(fiber.props)]
 }
 
@@ -260,11 +264,14 @@ function createdFiberInfo({ type, dom, props, children, child, sibling, parent, 
 }
 
 function effect() {
-  console.log('currentFiber', currentFiber)
-  nextWorkOfUnit = root = {
-    dom: currentFiber.dom,
-    children: currentFiber.children,
-    alternate: currentFiber
+  // 使用闭包来存储函数组建,当组建需要更新的时候,再次使用该组建fiber
+  let fiber = saveFunctionComponent;
+  return function () {
+    console.log('fiber', fiber)
+    nextWorkOfUnit = root = {
+      ...fiber,
+      alternate: fiber,
+    }
   }
 }
 
