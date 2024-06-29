@@ -280,12 +280,20 @@ function update() {
 // 用于记录当前函数组建state的指正
 let stateIndex
 function useState(initState) {
-  let useState = saveFunctionComponent?.alternate?.useStates?.[stateIndex]?.state
+  let oldStateHook = saveFunctionComponent?.alternate?.useStates?.[stateIndex]
   let stateHook = {
-    state: useState ? useState : initState,
+    state: oldStateHook ? oldStateHook.state : initState,
+    pool: oldStateHook ? oldStateHook.pool : []
   }
 
+  stateHook.pool.forEach((update) => {
+    stateHook.state = update(stateHook.state)
+  })
+  // 当state更新函数执行完成,则将其清空
+  stateHook.pool = []
+
   if (stateIndex === 0) {
+    // 组建初始化时,同时也将新fiber的state初始化
     saveFunctionComponent.useStates = []
   }
   // 何时能够做push操作?
@@ -298,7 +306,8 @@ function useState(initState) {
   stateIndex += 1
 
   function setState(newState) {
-    stateHook.state = newState(stateHook.state)
+    // stateHook.state = newState(stateHook.state)
+    stateHook.pool.push(newState)
 
     nextWorkOfUnit = root = {
       ...saveFunctionComponent,

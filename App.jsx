@@ -26,6 +26,8 @@ const List = ({id}) => {
     console.log('12313')
     number+=1;
     setNum((number) => number+=1)
+    setNum((number) => number+=1)
+    setNum((number) => number+=1)
     setName((name) => name+'-')
     console.log('number', number)
   }
