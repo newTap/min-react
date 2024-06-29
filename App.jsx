@@ -25,10 +25,10 @@ const List = ({id}) => {
   function click(){
     console.log('12313')
     number+=1;
-    setNum((number) => number+=1)
-    setNum((number) => number+=1)
-    setNum(2)
-    setName((name) => name+'-')
+    // setNum((number) => number+=1)
+    // setNum((number) => number+=1)
+    setNum(10)
+    // setName((name) => name+'-')
     console.log('number', number)
   }
   console.log('2222222')

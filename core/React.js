@@ -287,7 +287,10 @@ function useState(initState) {
   }
 
   stateHook.pool.forEach((update) => {
-    stateHook.state = update(stateHook.state)
+    let recent = update(stateHook.state)
+    if (recent != oldStateHook.state) {
+      stateHook.state = recent
+    }
   })
   // 当state更新函数执行完成,则将其清空
   stateHook.pool = []
@@ -307,6 +310,9 @@ function useState(initState) {
 
   function setState(newState) {
     // stateHook.state = newState(stateHook.state)
+    // 当修改的数据与上个数据一样,则不更新
+    //! 此处需要优化,如果newState为函数并且返回的数据与就数据相同,则不更新
+    if (newState === stateHook.state) return false
     stateHook.pool.push(isFunction(newState) ? newState : () => newState)
 
     nextWorkOfUnit = root = {
