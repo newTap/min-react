@@ -20,17 +20,19 @@ import React from './core/React.js'
 let status = true;
 
 const List = ({id}) => {
-  const effect = React.effect()
+  const [num, setNum] = React.useState(10)
+  const [name, setName] = React.useState('小明')
   function click(){
     console.log('12313')
     number+=1;
-    effect()
+    setNum((number) => number+=1)
+    setName((name) => name+'-')
     console.log('number', number)
   }
   console.log('2222222')
   return (
   <div>
-    <li onClick={click} id={id} >1:{number}</li>
+    <li onClick={click} id={id} >1:{num}:{name}</li>
     <li>2</li>
     <li>3</li>
   </div>
@@ -43,9 +45,9 @@ let props = {
 }
 
 const Hello = () => {
-  const effect = React.effect()
+  const effect = React.update()
+  console.log('123')
   function click(){
-    console.log('123')
     props.id = '123'
     status = !status;
     effect()

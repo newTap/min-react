@@ -125,6 +125,8 @@ function functionComponent(fiber) {
   //! 当函数组建更新之后,重新运行函数组建,即可获得最新的状态
   // 当函数组建执行的时候,暂时将该组建的fiber存储
   saveFunctionComponent = fiber
+  // 每次开始处理下一个组建,将state的指正归零
+  stateIndex = 0
   fiber.children = [fiber.type(fiber.props)]
 }
 
@@ -263,7 +265,7 @@ function createdFiberInfo({ type, dom, props, children, child, sibling, parent, 
   }
 }
 
-function effect() {
+function update() {
   // 使用闭包来存储函数组建,当组建需要更新的时候,再次使用该组建fiber
   let fiber = saveFunctionComponent;
   return function () {
@@ -275,10 +277,42 @@ function effect() {
   }
 }
 
+// 用于记录当前函数组建state的指正
+let stateIndex
+function useState(initState) {
+  let useState = saveFunctionComponent?.alternate?.useStates?.[stateIndex]?.state
+  let stateHook = {
+    state: useState ? useState : initState,
+  }
+
+  if (stateIndex === 0) {
+    saveFunctionComponent.useStates = []
+  }
+  // 何时能够做push操作?
+  // 在函数初始化的时候
+  // 但凡执行了useState函数,都是要对输出做一个push操作
+  // 如何知道函数是否初始化?
+  // stateIndex 为0的时候证明在做初始化
+  // 但是有一点是,不能在旧的useStates上进行操作,需要在新数组上做操作
+  saveFunctionComponent.useStates.push(stateHook)
+  stateIndex += 1
+
+  function setState(newState) {
+    stateHook.state = newState(stateHook.state)
+
+    nextWorkOfUnit = root = {
+      ...saveFunctionComponent,
+      alternate: saveFunctionComponent,
+    }
+  }
+  return [stateHook.state, setState]
+}
+
 requestIdleCallback(workLoop);
 
 const React = {
-  effect,
+  useState,
+  update,
   render,
   createElement
 }
