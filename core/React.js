@@ -307,7 +307,7 @@ function useState(initState) {
 
   function setState(newState) {
     // stateHook.state = newState(stateHook.state)
-    stateHook.pool.push(newState)
+    stateHook.pool.push(isFunction(newState) ? newState : () => newState)
 
     nextWorkOfUnit = root = {
       ...saveFunctionComponent,

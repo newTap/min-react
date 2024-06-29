@@ -27,7 +27,7 @@ const List = ({id}) => {
     number+=1;
     setNum((number) => number+=1)
     setNum((number) => number+=1)
-    setNum((number) => number+=1)
+    setNum(2)
     setName((name) => name+'-')
     console.log('number', number)
   }
