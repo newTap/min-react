@@ -1,5 +1,5 @@
 import { styleOperate } from "./DomOperate";
-import { isArray, isFunction } from "../util";
+import { isArray, isFunction, textFilter } from "../util";
 
 const TEXT_NODE_TYPE = 'TEXT_ELEMENT'
 const FIBER_UPDATE = 'update'
@@ -10,7 +10,7 @@ function createTextNode(node) {
     type: TEXT_NODE_TYPE,
     props: {
       // 防止node为false的渲染
-      nodeValue: node === false ? '' : node
+      nodeValue: textFilter(node)
     },
     children: []
   }
@@ -67,6 +67,12 @@ function workLoop(deadline) {
 
       currentFiber = root
       root = null;
+      // 当nextWorkOfUnit被重新负值代表,effect改变了state状态,需要重新跟新组件
+      // 但是root被清除了,无法重新执行commitRoot来更新组件,所以此处需要重新定义root
+      if (nextWorkOfUnit) {
+        root = nextWorkOfUnit
+      }
+
     }
     shouldYield = deadline.timeRemaining() < 5;
   }
