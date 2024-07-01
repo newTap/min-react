@@ -57,6 +57,8 @@ function workLoop(deadline) {
     // 首次渲染将完成之后将root清空
     if (!nextWorkOfUnit && root) {
       commitRoot(root.child);
+      // effect在dom更新之后执行,所以必须在commitRoot完成之后调用
+      commitEffects(root)
       while (deletions.length > 0) {
         let fiber = deletions.shift()
         commitDelete(fiber);
@@ -70,6 +72,45 @@ function workLoop(deadline) {
   }
 
   requestIdleCallback(workLoop);
+}
+
+function commitEffects(fiber) {
+  if (!fiber) return false
+  // 要区分第一次加载还是,后续的更新
+  if (!fiber?.alternate || fiber.effectTag === PLACEMENT_UPDATE) {
+    // 初始化
+    initEffect(fiber)
+  } else {
+    // 后续更新
+    updateEffect(fiber)
+  }
+}
+
+function updateEffect(fiber) {
+  let effectHooks = fiber.effectHooks
+  let oldFiberHooks = fiber.alternate?.effectHooks
+  effectHooks?.forEach(({ fun, deps }, index) => {
+    // 若是函数组建跟新,effect没有传递依赖不执行
+    if (!deps.length) return false
+    let oldFiberDeps = oldFiberHooks?.[index]?.deps
+    // 校验依赖是否有更新
+    const isUpdate = deps.some((dep, i) => dep !== oldFiberDeps?.[i])
+    if (isUpdate) {
+      fun()
+    }
+  })
+  // 无限递归下去,执行每一个fiber
+  commitEffects(fiber.child)
+  commitEffects(fiber.sibling)
+}
+
+function initEffect(fiber) {
+  // initEffect,函数初始化,无论是否含有依赖,都应该执行
+  let effectHooks = fiber.effectHooks
+  effectHooks?.map((effect) => effect.fun())
+  // 无限递归下去,执行每一个fiber
+  commitEffects(fiber.child)
+  commitEffects(fiber.sibling)
 }
 
 // 当根组件全部更新好之后，再渲染至页面上,防止一次性渲染不全的问题
@@ -127,6 +168,8 @@ function functionComponent(fiber) {
   saveFunctionComponent = fiber
   // 每次开始处理下一个组建,将state的指正归零
   stateIndex = 0
+  // 清除上个函数的effect列表
+  effects = []
   fiber.children = [fiber.type(fiber.props)]
 }
 
@@ -269,9 +312,10 @@ function update() {
   // 使用闭包来存储函数组建,当组建需要更新的时候,再次使用该组建fiber
   let fiber = saveFunctionComponent;
   return function () {
-    console.log('fiber', fiber)
     nextWorkOfUnit = root = {
       ...fiber,
+      // 更新effectTag为update
+      effectTag: FIBER_UPDATE,
       alternate: fiber,
     }
   }
@@ -317,10 +361,23 @@ function useState(initState) {
 
     nextWorkOfUnit = root = {
       ...saveFunctionComponent,
+      // 更新effectTag为update
+      effectTag: FIBER_UPDATE,
       alternate: saveFunctionComponent,
     }
   }
   return [stateHook.state, setState]
+}
+
+// 用于存储effect
+let effects
+function useEffect(fun, deps) {
+  const effectHook = {
+    fun,
+    deps
+  }
+  effects.push(effectHook)
+  saveFunctionComponent.effectHooks = effects
 }
 
 requestIdleCallback(workLoop);
@@ -329,6 +386,7 @@ const React = {
   useState,
   update,
   render,
+  useEffect,
   createElement
 }
 

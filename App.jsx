@@ -22,13 +22,22 @@ let status = true;
 const List = ({id}) => {
   const [num, setNum] = React.useState(10)
   const [name, setName] = React.useState('小明')
+  React.useEffect(() =>{
+    console.log('init')
+  },[])
+  React.useEffect(() =>{
+    console.log('change', name)
+  },[name])
+  React.useEffect(() =>{
+    console.log('change', num)
+  },[num])
   function click(){
     console.log('12313')
     number+=1;
     // setNum((number) => number+=1)
     // setNum((number) => number+=1)
-    setNum(10)
-    // setName((name) => name+'-')
+    // setNum(10)
+    setName((name) => name+'-')
     console.log('number', number)
   }
   console.log('2222222')
