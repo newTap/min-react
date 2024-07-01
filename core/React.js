@@ -1,5 +1,5 @@
 import { styleOperate } from "./DomOperate";
-import { isFunction } from "../util";
+import { isArray, isFunction } from "../util";
 
 const TEXT_NODE_TYPE = 'TEXT_ELEMENT'
 const FIBER_UPDATE = 'update'
@@ -135,7 +135,7 @@ function commitRoot(fiber) {
   if (fiber?.effectTag === FIBER_UPDATE && fiber.dom) {
     // fiber更新
     // 将fiber的dom更新到真实dom上
-    const oldProps = fiber.alternate.props || {}
+    const oldProps = fiber.alternate?.props || {}
     const newProps = fiber.props || {}
     updateAttribute(fiber.dom, newProps, oldProps)
   }
@@ -199,7 +199,11 @@ function performWorkOfUnit(fiber) {
   } else {
     hookComponent(fiber)
   }
-
+  // 当函数组件内使用了map等api,返回的是一个数组,所以会导致其children为一个二维数组
+  // 需要将其转换成一维数组
+  if (fiber.children?.[0] && isArray(fiber.children[0])) {
+    fiber.children = fiber.children.flat()
+  }
   reconcileChildren(fiber, fiber.children)
 
   // 根据fiber返回的顺序,优先返回child,然后是sibling最后是parent的sibling
@@ -330,7 +334,8 @@ function update() {
 // 用于记录当前函数组建state的指正
 let stateIndex
 function useState(initState) {
-  let oldStateHook = saveFunctionComponent?.alternate?.useStates?.[stateIndex]
+  let currentFiber = saveFunctionComponent;
+  let oldStateHook = currentFiber?.alternate?.useStates?.[stateIndex]
   let stateHook = {
     state: oldStateHook ? oldStateHook.state : initState,
     pool: oldStateHook ? oldStateHook.pool : []
@@ -347,7 +352,7 @@ function useState(initState) {
 
   if (stateIndex === 0) {
     // 组建初始化时,同时也将新fiber的state初始化
-    saveFunctionComponent.useStates = []
+    currentFiber.useStates = []
   }
   // 何时能够做push操作?
   // 在函数初始化的时候
@@ -355,7 +360,7 @@ function useState(initState) {
   // 如何知道函数是否初始化?
   // stateIndex 为0的时候证明在做初始化
   // 但是有一点是,不能在旧的useStates上进行操作,需要在新数组上做操作
-  saveFunctionComponent.useStates.push(stateHook)
+  currentFiber.useStates.push(stateHook)
   stateIndex += 1
 
   function setState(newState) {
@@ -366,10 +371,10 @@ function useState(initState) {
     stateHook.pool.push(isFunction(newState) ? newState : () => newState)
 
     nextWorkOfUnit = root = {
-      ...saveFunctionComponent,
+      ...currentFiber,
       // 更新effectTag为update
       effectTag: FIBER_UPDATE,
-      alternate: saveFunctionComponent,
+      alternate: currentFiber,
     }
   }
   return [stateHook.state, setState]
