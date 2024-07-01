@@ -27,15 +27,21 @@ const List = ({id}) => {
   },[])
   React.useEffect(() =>{
     console.log('change', name)
+    return () => {
+      console.log('取消依赖', name)
+    }
   },[name])
   React.useEffect(() =>{
-    console.log('change', num)
+    console.log('change, name', num)
+    return () => {
+      console.log('effect name', num)
+    }
   },[num])
   function click(){
     console.log('12313')
     number+=1;
     // setNum((number) => number+=1)
-    // setNum((number) => number+=1)
+    setNum((number) => number+=1)
     // setNum(10)
     setName((name) => name+'-')
     console.log('number', number)

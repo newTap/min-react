@@ -89,14 +89,17 @@ function commitEffects(fiber) {
 function updateEffect(fiber) {
   let effectHooks = fiber.effectHooks
   let oldFiberHooks = fiber.alternate?.effectHooks
-  effectHooks?.forEach(({ fun, deps }, index) => {
+  effectHooks?.forEach((effectHook, index) => {
+    const { fun, deps } = effectHook
     // 若是函数组建跟新,effect没有传递依赖不执行
     if (!deps.length) return false
-    let oldFiberDeps = oldFiberHooks?.[index]?.deps
+    let oldFiberEffect = oldFiberHooks?.[index]
     // 校验依赖是否有更新
-    const isUpdate = deps.some((dep, i) => dep !== oldFiberDeps?.[i])
+    const isUpdate = deps.some((dep, i) => dep !== oldFiberEffect?.deps?.[i])
     if (isUpdate) {
-      fun()
+      oldFiberEffect?.return && oldFiberEffect?.return()
+      let recent = fun()
+      effectHook.return = recent
     }
   })
   // 无限递归下去,执行每一个fiber
@@ -107,7 +110,10 @@ function updateEffect(fiber) {
 function initEffect(fiber) {
   // initEffect,函数初始化,无论是否含有依赖,都应该执行
   let effectHooks = fiber.effectHooks
-  effectHooks?.map((effect) => effect.fun())
+  effectHooks?.map((effect) => {
+    const recent = effect.fun()
+    effect.return = recent
+  })
   // 无限递归下去,执行每一个fiber
   commitEffects(fiber.child)
   commitEffects(fiber.sibling)
@@ -374,7 +380,8 @@ let effects
 function useEffect(fun, deps) {
   const effectHook = {
     fun,
-    deps
+    return: null,
+    deps,
   }
   effects.push(effectHook)
   saveFunctionComponent.effectHooks = effects
